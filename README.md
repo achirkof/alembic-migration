@@ -8,6 +8,8 @@
 
 ## 📖 Description
 
+⚠️ This is a fork of the original [alembic-version-checker](devglitch/alembic-version-checker) project. This fork is updated to the latest versions of Alembic and GitHub Actions and allow to use SQLModel as base model.
+
 The **Alembic Migration Checker** GitHub Action performs a comprehensive check to ensure that the Alembic version 
 recorded in your database aligns with the version of the latest migration script in your Alembic migrations 
 directory. It is designed to verify that migrations have been applied in the correct sequence, 
@@ -65,7 +67,7 @@ Using `db_url` is convenient when the connection string is available as a single
 
 ```yaml
 - name: Check Alembic Migration Version
-  uses: DevGlitch/alembic-migration-checker@v1.1
+  uses: achirkof/alembic-migration@v1.2
   with:
     db_url: ${{ secrets.DB_URL }}  # Format: postgresql+psycopg2://user:password@host:port/dbname
     migrations_path: ./migrations/
@@ -79,7 +81,7 @@ using a different port.
 
 ```yaml
 - name: Check Alembic Migration Version
-  uses: DevGlitch/alembic-migration-checker@v1.1
+  uses: achirkof/alembic-migration@v1.2
   with:
     db_host: ${{ secrets.DB_HOST }}
     db_port: ${{ secrets.DB_PORT }}  # Only if not using the default port 5432
@@ -98,7 +100,7 @@ connection string (`db_url`) or individual parameters.
 
 ```yaml
 - name: Check Alembic Migration Version
-  uses: DevGlitch/alembic-migration-checker@v1.1
+  uses: achirkof/alembic-migration@v1.2
   with:
     db_url: ${{ secrets.DB_URL }}  # Format: mysql://user:password@host:port/dbname
     migrations_path: ./migrations/
@@ -110,7 +112,7 @@ If you prefer, you can specify individual parameters for the database connection
 
 ```yaml
 - name: Check Alembic Migration Version
-  uses: DevGlitch/alembic-migration-checker@v1.1
+  uses: achirkof/alembic-migration@v1.2
   with:
     db_type: mysql
     db_host: ${{ secrets.DB_HOST }}
@@ -129,7 +131,7 @@ For SQLite databases, you can either use a `db_url` to specify the entire databa
 
 ```yaml
 - name: Check Alembic Migration Version
-  uses: DevGlitch/alembic-migration-checker@v1.1
+  uses: achirkof/alembic-migration@v1.2
   with:
     db_url: ${{ secrets.DB_URL }}  # Format: sqlite:///path_to_db_file
     migrations_path: ./migrations/
@@ -139,7 +141,7 @@ For SQLite databases, you can either use a `db_url` to specify the entire databa
 
 ```yaml
 - name: Check Alembic Migration Version
-  uses: DevGlitch/alembic-migration-checker@v1.1
+  uses: achirkof/alembic-migration@v1.2
   with:
     db_type: sqlite
     db_name: ${{ secrets.DB_NAME }}  # Path to the SQLite database file
@@ -180,7 +182,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Check Alembic Migration Version
-        uses: DevGlitch/alembic-migration-checker@v1.1
+        uses: achirkof/alembic-migration@v1.2
         with:
           db_host: ${{ secrets.DB_HOST }}
           db_name: ${{ secrets.DB_NAME }}
@@ -212,7 +214,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Check Alembic Migration Version
-        uses: DevGlitch/alembic-migration-checker@v1.1
+        uses: achirkof/alembic-migration@v1.2
         with:
           db_host: ${{ secrets.STAGING_DB_HOST }}
           db_name: ${{ secrets.STAGING_DB_NAME }}
@@ -266,7 +268,7 @@ please open an issue. Thank you!
 Your support keeps this project going!
 
 - ⭐️ **Star**: Show your appreciation by giving this project a star.
-- ☕️ **[Buy Me a Coffee](https://github.com/sponsors/DevGlitch)**: Contribute by buying a virtual coffee.
-- 💼 **[Sponsor This Project](https://github.com/sponsors/DevGlitch)**: Consider sponsoring for ongoing support.
+- ☕️ **[Buy a Coffee to original author](https://github.com/sponsors/DevGlitch)**: Contribute by buying a virtual coffee.
+- 💼 **[Sponsor original Project](https://github.com/sponsors/DevGlitch)**: Consider sponsoring for ongoing support.
 
 Making a difference, one line of code at a time...
