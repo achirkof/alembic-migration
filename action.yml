@@ -1,6 +1,6 @@
 name: "Alembic Migration"
 author: "achirkof"
-description: "Automate Alembic database migration checks for PostgreSQL, MySQL, and SQLite in CI/CD workflows"
+description: "Automate Alembic database migration checks and apply migrations if needed for PostgreSQL, MySQL, and SQLite in CI/CD workflows"
 branding:
   icon: "database"
   color: "purple"
@@ -36,6 +36,13 @@ inputs:
     description: "Path to the Alembic migrations folder. Default: './migrations/'"
     required: false
     default: "./migrations/"
+  target_metadata:
+      description: "Target metadata for Alembic. Example: 'src.database.models.base.BaseModel'"
+      required: false
+  apply_migrations:
+      description: "Apply migrations to the database. Default: false"
+      required: false
+      default: "false"
 runs:
   using: "docker"
   image: "Dockerfile"
@@ -48,3 +55,5 @@ runs:
     - ${{ inputs.db_password }}
     - ${{ inputs.db_name }}
     - ${{ inputs.migrations_path }}
+    - ${{ inputs.target_metadata }}
+    - ${{ inputs.apply_migrations }}

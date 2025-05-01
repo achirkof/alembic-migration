@@ -1,4 +1,4 @@
-# Alembic Migration Checker - GitHub Action
+# Alembic Migration - GitHub Action
 
 ![Python Version](https://img.shields.io/badge/Python-3.12-blue?logo=python&logoColor=white)
 ![Docker Base Image](https://img.shields.io/badge/Docker%20Image-3.12--slim-blue?logo=docker&logoColor=white)
@@ -8,7 +8,9 @@
 
 ## 📖 Description
 
-⚠️ This is a fork of the original [alembic-version-checker](devglitch/alembic-version-checker) project. This fork is updated to the latest versions of Alembic and GitHub Actions and allow to use SQLModel as base model.
+⚠️ This is a fork of the original [alembic-version-checker](https://github.com/DevGlitch/alembic-migration-checker) project. This fork is updated to the latest versions of Alembic and GitHub Actions and allow to use **SQLModel** as base model and also **supports automatic migrations**.
+
+For automatic migrations, you need to set the `apply_migrations` environment variable to `true` in your workflow and provide `target_metadata` class. This will automatically create and apply migrations based on the changes in your SQLModel models. See [example](#example-usage-with-automatic-migrations) below.
 
 The **Alembic Migration Checker** GitHub Action performs a comprehensive check to ensure that the Alembic version 
 recorded in your database aligns with the version of the latest migration script in your Alembic migrations 
@@ -34,6 +36,8 @@ _Note that some inputs are not required for all database types, such as SQLite._
 - `db_password`: The password for database access.
 - `db_name`: The name of the database to check.
 - `migrations_path`: The path to your Alembic migrations folder. Defaults to `./migrations/`.
+- `target_metadata`: The target metadata class for automatic migrations. This is required for automatic migrations.
+- `apply_migrations`: Set to `true` to apply migrations automatically. This is useful for automatic migrations.
 
 ___
 
@@ -121,6 +125,25 @@ If you prefer, you can specify individual parameters for the database connection
     db_password: ${{ secrets.DB_PASSWORD }}
     db_name: ${{ secrets.DB_NAME }}
     migrations_path: ./migrations/
+```
+
+#### Example Usage with automatic migrations:
+
+If you prefer, you can specify individual parameters for the database connection.
+
+```yaml
+- name: Check Alembic Migration Version
+  uses: achirkof/alembic-migration@v1.2
+  with:
+    db_type: mysql
+    db_host: ${{ secrets.DB_HOST }}
+    db_port: ${{ secrets.DB_PORT }}
+    db_user: ${{ secrets.DB_USER }}
+    db_password: ${{ secrets.DB_PASSWORD }}
+    db_name: ${{ secrets.DB_NAME }}
+    migrations_path: ./migrations/
+    target_metadata: your_project.models.Base  # Replace with your actual metadata class
+    apply_migrations: true  # Set to true to apply migrations automatically
 ```
 
 ### 🪶 SQLite

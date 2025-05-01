@@ -1,17 +1,22 @@
-SCRIPT_DESCRIPTION = """
-This script checks the Alembic version of the latest migration against the database and evaluates its readiness.
-It supports PostgreSQL, MySQL, and SQLite databases.
-"""
-
 import argparse
+import importlib
 import os
 import sys
 
+from alembic.operations import Operations
+from alembic.runtime.environment import EnvironmentContext
+from alembic.runtime.migration import MigrationContext, RevisionStep
 from alembic.config import Config
 from alembic.script import ScriptDirectory
 from sqlalchemy import MetaData, create_engine
 from sqlalchemy.sql import select
 
+SCRIPT_DESCRIPTION = """
+This script checks the Alembic version of the latest migration against the database and evaluates its readiness.
+If the database is not up to date, it provides recommendations for applying the necessary migrations or make migrations 
+automatically if provided `target_metadata` and the --apply-migrations flag is set.
+It supports PostgreSQL, MySQL, and SQLite databases.
+"""
 
 class AlembicMigrationChecker:
     """
@@ -43,6 +48,8 @@ class AlembicMigrationChecker:
         db_password,
         db_name,
         migrations_path,
+        target_metadata=None,
+        apply_migrations=False,
     ):
         """
         Initializes the AlembicMigrationChecker with database connection details and migrations folder path.
@@ -56,6 +63,8 @@ class AlembicMigrationChecker:
         :param db_password: The database password
         :param db_name: The database name
         :param migrations_path: The path to Alembic migrations folder
+        :param target_metadata: The target metadata for the database
+        :param apply_migrations: Flag to apply migrations if there are any pending migrations
         """
         print("Initializing AlembicMigrationChecker...")
         self.db_type = db_type
@@ -65,6 +74,8 @@ class AlembicMigrationChecker:
         self.db_password = db_password
         self.db_name = db_name
         self.migrations_path = migrations_path
+        self.target_metadata = target_metadata
+        self.apply_migrations = apply_migrations
 
         if db_url:
             self.db_url = db_url
@@ -187,7 +198,7 @@ class AlembicMigrationChecker:
 
     def evaluate_migration_alignment(self):
         """Assesses the database against the latest migration script to determine migration readiness and alignment."""
-        print("Starting migration alignement evaluation...")
+        print("Starting migration alignment evaluation...")
         latest_migration_version = self.get_latest_migration_version()
         db_version = self.get_db_version()
         print(
@@ -220,21 +231,27 @@ class AlembicMigrationChecker:
             if found_revision:
                 if pending_migrations_count == 1:
                     print(
-                        f"\nSUCCESS: The database is currently at version {db_version}, which aligns with the down "
+                        f"\nThe database is currently at version {db_version}, which aligns with the down "
                         f"revision of the latest migration script, identified by version ({latest_migration_version})."
                         f"This alignment indicates that one pending migration is ready to be applied to bring the "
                         f"database schema up to the latest version."
                     )
                 else:
                     print(
-                        f"\nSUCCESS: The database is currently at version {db_version}, which corresponds to a "
+                        f"\nThe database is currently at version {db_version}, which corresponds to a "
                         f"version from a previously applied migration.\nHowever, there are currently "
                         f"{pending_migrations_count} new migration scripts ready to be applied to bring the database "
-                        f"schema up to the most recent version.\nRecommendation: Apply the {pending_migrations_count} "
-                        f"pending migrations in sequence, with thorough testing and backups for each. This strategy "
-                        f"ensures stability and simplifies rollback if needed."
+                        f"schema up to the most recent version.\n"
                     )
-                sys.exit(0)
+
+                if self.apply_migrations:
+                    self.apply_database_migrations()
+                else:
+                    print(
+                        "\nWARNING: The database is not up to date with the latest migration scripts.\n"
+                        "To apply the pending migrations, please run the migration script manually or use `apply-migrations` flag."
+                    )
+                    sys.exit(0)
             else:
                 print(
                     f"\nERROR: Version mismatch detected.\n"
@@ -244,6 +261,75 @@ class AlembicMigrationChecker:
                 )
                 sys.exit(1)
 
+    def apply_database_migrations(self) -> None:
+        """Apply alembic database migrations.
+
+        This method will first check if the database is empty (no applied alembic revisions),
+        in which case, it uses SQLAlchemy to create all tables and then stamp the database for alembic.
+
+        If the database is not empty, it will apply all necessary migrations, bringing the database
+        up to date with the latest revision.
+        """
+
+        # Validate inputs for target_metadata
+        if self.target_metadata is None:
+            print(
+                "\nERROR: `target_metadata` is required to apply migrations. "
+                "Please provide the full path to the class in the `target_metadata` argument or set `apply_migrations` to False."
+            )
+            sys.exit(1)
+
+        script = ScriptDirectory.from_config(self.alembic_config)
+
+        def retrieve_migrations(rev: str, ctx: MigrationContext) -> list[RevisionStep]:
+            """Retrieve all remaining migrations to be applied to get to "head".
+
+            The returned migrations will be the migrations that will get applied when upgrading.
+            """
+            migrations = script._upgrade_revs("head", rev)  # pyright: ignore[reportPrivateUsage]
+
+            if len(migrations) > 0:
+                print(f"Applying {len(migrations)} database migrations...")
+            else:
+                print("No database migrations to apply, database is up to date")
+
+            return migrations
+
+        try:
+            print("Importing model's MetaData object...")
+            sys.path.insert(0, os.getcwd())
+
+            module_path, class_name = self.target_metadata.rsplit('.', 1)
+            module = importlib.import_module(module_path)
+            base = getattr(module, class_name, None)
+
+            connection = self.engine.connect()
+            env_context = EnvironmentContext(self.alembic_config, script)
+            env_context.configure(connection=connection, target_metadata=base.metadata, fn=retrieve_migrations)
+            context = env_context.get_context()
+
+            current_rev = context.get_current_revision()
+
+            # If there is no current revision, this is a brand-new database
+            # instead of going through the migrations, we can instead use metadata.create_all
+            # to create all tables and then stamp the database with the head revision.
+            if current_rev is None:
+                print("Performing initial database setup (creating tables)...")
+                base.metadata.create_all(connection)
+                context.stamp(script, "head")
+                sys.exit(0)
+
+            with Operations.context(context) as _op, context.begin_transaction():
+                context.run_migrations()
+        except Exception as e:
+            print(f"\nERROR applying migrations: {e}")
+            sys.exit(1)
+        else:
+            print(
+                "\nSUCCESS: Database migrations applied successfully.\n"
+                "The database schema is now up to date with the latest migration scripts."
+            )
+            sys.exit(0)
 
 def main():
     """The main function of the script."""
@@ -256,9 +342,9 @@ def main():
     parser.add_argument("--db_user", type=str, help="Database User")
     parser.add_argument("--db_password", type=str, help="Database Password")
     parser.add_argument("--db_name", type=str, help="Database Name")
-    parser.add_argument(
-        "--migrations_path", type=str, help="Migrations Path", required=True
-    )
+    parser.add_argument("--migrations_path", type=str, help="Migrations Path", required=True)
+    parser.add_argument("--target_metadata", type=str, help="Target Metadata. Provide the full path to the class.")
+    parser.add_argument("--apply_migrations", type=bool, help="Apply migrations if there are any pending migrations.")
     args = parser.parse_args()
     # Initialize the AlembicMigrationChecker class with the unpacked inputs
     checker = AlembicMigrationChecker(
@@ -270,6 +356,8 @@ def main():
         args.db_password,
         args.db_name,
         args.migrations_path,
+        args.target_metadata,
+        args.apply_migrations,
     )
     # Assess the alignment between the database version and the latest migration script.
     checker.evaluate_migration_alignment()
