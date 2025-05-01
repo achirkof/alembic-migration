@@ -1,6 +1,6 @@
 name: "Alembic Migration"
 author: "achirkof"
-description: "Automate Alembic database migration checks and apply migrations if needed for PostgreSQL, MySQL, and SQLite in CI/CD workflows"
+description: "Automate Alembic database migration checks and apply migrations for PostgreSQL, MySQL, and SQLite in CI/CD workflows"
 branding:
   icon: "database"
   color: "purple"

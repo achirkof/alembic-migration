@@ -232,7 +232,7 @@ class AlembicMigrationChecker:
                 if pending_migrations_count == 1:
                     print(
                         f"\nThe database is currently at version {db_version}, which aligns with the down "
-                        f"revision of the latest migration script, identified by version ({latest_migration_version})."
+                        f"revision of the latest migration script, identified by version ({latest_migration_version}). "
                         f"This alignment indicates that one pending migration is ready to be applied to bring the "
                         f"database schema up to the latest version."
                     )

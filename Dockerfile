@@ -5,6 +5,7 @@ RUN pip install sqlalchemy
 RUN pip install alembic
 RUN pip install sqlmodel
 RUN pip install psycopg2-binary
+RUN pip install pydash
 
 # Install mysqlclient and its debian package dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
